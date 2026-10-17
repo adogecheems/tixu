@@ -668,6 +668,11 @@ async function main() {
   const tagOne = await admin.post('/api/v1/admin/tags', { name: `测试标签A ${suffix}` });
   const tagTwo = await admin.post('/api/v1/admin/tags', { name: `测试标签B ${suffix}` });
   assert.equal(tagOne.status, 201);
+  const publicTagsAfterCreate = await guest.get('/api/v1/tags');
+  assert.ok(
+    publicTagsAfterCreate.data.tags.some((tag) => tag.id === tagOne.data.id),
+    '管理员创建标签后，公开标签缓存应立即失效',
+  );
   const renameTag = await admin.put(`/api/v1/admin/tags/${tagTwo.data.id}`, {
     name: `测试标签B2 ${suffix}`,
   });

@@ -119,6 +119,7 @@ npm test             # API 集成测试（默认临时 SQLite，不影响 data/�
 | `DATABASE_URL` | 空 | PostgreSQL 连接 URL；设置后启用 PostgreSQL，并忽略 `DATABASE_PATH` |
 | `DATABASE_PATH` | `./data/tixu.db` | 未设置 `DATABASE_URL` 时使用的 SQLite 数据库路径 |
 | `PG_POOL_MAX` | `10` | PostgreSQL 连接池上限 |
+| `PUBLIC_CACHE_TTL_SECONDS` | `10` | 分类、标签与首页公开统计的进程内缓存时间；设为 `0` 关闭 |
 | `UPLOAD_DIR` | `./data/uploads` | 图片上传与导入资源目录 |
 | `SESSION_DAYS` | `30` | 登录会话有效期（天） |
 | `COOKIE_SECURE` | `false` | 部署在 HTTPS 后设置为 `true` |
@@ -131,6 +132,13 @@ npm test             # API 集成测试（默认临时 SQLite，不影响 data/�
 | `LOG_LEVEL` | `info` | Fastify 日志等级 |
 
 开发模式下，Vite 通过代理访问后端，默认允许 `localhost:5173` / `127.0.0.1:5173`。如果修改开发端口，请同步设置 `ALLOWED_ORIGINS`。
+
+### 运行时缓存与密码哈希
+
+- 分类、标签和首页公开统计会在进程内缓存，默认 10 秒；管理员成功写入后会立即失效，避免发布或改名后长时间显示旧数据。
+- 缓存只包含公共元数据；用户个人统计、收藏与错题仍按请求读取最新状态。
+- 设置 `PUBLIC_CACHE_TTL_SECONDS=0` 可以关闭缓存。
+- 密码哈希使用异步 `crypto.scrypt`；登录 / 注册不会再用同步计算阻塞 Node.js 主事件循环。
 
 ### 重置 Demo 数据
 

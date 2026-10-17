@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { promisify } from 'node:util';
 import { config } from './config.js';
 import { isUniqueViolation } from './db.js';
 import { ApiError, errors } from './errors.js';
@@ -6,16 +7,17 @@ import { nowIso } from './utils.js';
 
 const SESSION_COOKIE = 'tixu_session';
 const CSRF_COOKIE = 'tixu_csrf';
+const scrypt = promisify(crypto.scrypt);
 
-export function hashPassword(password) {
+export async function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  const hash = (await scrypt(password, salt, 64)).toString('hex');
   return { salt, hash };
 }
 
-export function verifyPassword(password, salt, expectedHash) {
+export async function verifyPassword(password, salt, expectedHash) {
   try {
-    const actual = crypto.scryptSync(password, salt, 64);
+    const actual = await scrypt(password, salt, 64);
     const expected = Buffer.from(expectedHash, 'hex');
     return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
   } catch {
@@ -55,7 +57,7 @@ export async function findUserByUsername(db, username) {
 export async function createUser(db, { username, password, role = 'user' }) {
   const cleanUsername = validateUsername(username);
   validatePassword(password);
-  const { salt, hash } = hashPassword(password);
+  const { salt, hash } = await hashPassword(password);
   const timestamp = nowIso();
   try {
     return await db

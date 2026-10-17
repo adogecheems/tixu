@@ -1,3 +1,4 @@
+import { config } from '../config.js';
 import { parseJson, publicId, stripMarkdown } from '../utils.js';
 import { publicFillConfig } from '../validation.js';
 
@@ -275,7 +276,49 @@ export async function getPublicQuestion(db, questionId, user) {
   };
 }
 
-export async function getCategoryTree(db, { includeZero = false } = {}) {
+const publicCacheTtlMs = Math.max(0, Number(config.publicCacheTtlSeconds || 0) * 1000);
+let publicCacheRevision = 0;
+const publicCaches = {
+  categories: { value: null, expiresAt: 0, loading: null },
+  tags: { value: null, expiresAt: 0, loading: null },
+  home: { value: null, expiresAt: 0, loading: null },
+};
+
+export function invalidatePublicCache() {
+  publicCacheRevision += 1;
+  for (const cache of Object.values(publicCaches)) {
+    cache.value = null;
+    cache.expiresAt = 0;
+    cache.loading = null;
+  }
+}
+
+function loadCached(key, loader) {
+  if (publicCacheTtlMs <= 0) return loader();
+  const cache = publicCaches[key];
+  if (cache.value !== null && Date.now() < cache.expiresAt) {
+    return Promise.resolve(cache.value);
+  }
+  if (cache.loading) return cache.loading;
+
+  const revision = publicCacheRevision;
+  const loading = Promise.resolve()
+    .then(loader)
+    .then((value) => {
+      if (revision === publicCacheRevision) {
+        cache.value = value;
+        cache.expiresAt = Date.now() + publicCacheTtlMs;
+      }
+      return value;
+    })
+    .finally(() => {
+      if (cache.loading === loading) cache.loading = null;
+    });
+  cache.loading = loading;
+  return loading;
+}
+
+async function computeCategoryTree(db, { includeZero = false } = {}) {
   const rows = await db
     .prepare(
       `SELECT c.id, c.name, c.parent_id, c.sort_order,
@@ -310,7 +353,12 @@ export async function getCategoryTree(db, { includeZero = false } = {}) {
   return includeZero ? roots : roots.filter((root) => root.questionCount > 0 || root.children.length);
 }
 
-export async function getTags(db) {
+export async function getCategoryTree(db, { includeZero = false } = {}) {
+  if (includeZero) return computeCategoryTree(db, { includeZero: true });
+  return loadCached('categories', () => computeCategoryTree(db, { includeZero: false }));
+}
+
+async function computeTags(db) {
   const rows = await db
     .prepare(
       `SELECT t.id, t.name,
@@ -329,7 +377,11 @@ export async function getTags(db) {
   }));
 }
 
-export async function publicHomeSummary(db, user) {
+export async function getTags(db) {
+  return loadCached('tags', () => computeTags(db));
+}
+
+async function computeHomeBase(db) {
   const questionCount = Number(
     (
       await db
@@ -353,6 +405,11 @@ export async function publicHomeSummary(db, user) {
       ...item,
       children: item.children.slice(0, 5),
     }));
+  return { questionCount, categoryCount, tagCount, categories };
+}
+
+export async function publicHomeSummary(db, user) {
+  const base = await loadCached('home', () => computeHomeBase(db));
   let userStats = null;
   if (user) {
     const stats = await db
@@ -369,5 +426,5 @@ export async function publicHomeSummary(db, user) {
       favorites: Number(stats.favorites) || 0,
     };
   }
-  return { questionCount, categoryCount, tagCount, categories, userStats };
+  return { ...base, userStats };
 }

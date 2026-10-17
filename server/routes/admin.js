@@ -1,5 +1,6 @@
 import { config } from '../config.js';
 import { isUniqueViolation } from '../db.js';
+import { invalidatePublicCache } from '../services/questionQueries.js';
 import { requireAdmin } from '../auth.js';
 import { ApiError, errors } from '../errors.js';
 import { nowIso, parseId, parseJson, publicId } from '../utils.js';
@@ -120,6 +121,11 @@ export default async function adminRoutes(app) {
   const { db } = app;
   app.addHook('preHandler', async (request) => {
     requireAdmin(request);
+  });
+  app.addHook('onResponse', (request, reply) => {
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method) && reply.statusCode < 400) {
+      invalidatePublicCache();
+    }
   });
 
   app.get('/admin/stats', async () => adminStats(db));

@@ -29,6 +29,7 @@ function resolvePath(value) {
 }
 
 const port = Number(process.env.PORT || 3000);
+const publicCacheTtl = Number(process.env.PUBLIC_CACHE_TTL_SECONDS ?? 10);
 
 export const config = {
   rootDir,
@@ -38,6 +39,7 @@ export const config = {
   databaseUrl: String(process.env.DATABASE_URL || '').trim(),
   databasePath: resolvePath(process.env.DATABASE_PATH || 'data/tixu.db'),
   postgresPoolMax: Math.max(1, Number(process.env.PG_POOL_MAX || 10)),
+  publicCacheTtlSeconds: Number.isFinite(publicCacheTtl) ? Math.max(0, publicCacheTtl) : 10,
   uploadDir: resolvePath(process.env.UPLOAD_DIR || 'data/uploads'),
   clientDist: path.join(rootDir, 'dist'),
   sessionDays: Math.max(1, Number(process.env.SESSION_DAYS || 30)),
