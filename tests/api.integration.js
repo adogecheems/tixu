@@ -149,6 +149,8 @@ async function setupServer() {
     ADMIN_USERNAME,
     ADMIN_PASSWORD,
     PORT: '0',
+    ALLOWED_ORIGINS: 'https://app.example.test, https://trailing.example.test/',
+    TRUST_PROXY: 'false',
   };
   execFileSync(process.execPath, ['server/setup.js'], {
     cwd: ROOT,
@@ -205,6 +207,22 @@ async function main() {
   });
   assert.equal(csrfResponse.status, 403);
   log('缺少 CSRF 头的写请求被拒绝');
+
+  // Origin allowlist normalization: the trailing slash in config must not break matching.
+  const allowedOrigin = await guest.request('/api/v1/auth/merge', {
+    method: 'POST',
+    body: {},
+    headers: { Origin: 'https://trailing.example.test' },
+  });
+  assert.equal(allowedOrigin.status, 401);
+  const rejectedOrigin = await guest.request('/api/v1/auth/merge', {
+    method: 'POST',
+    body: {},
+    headers: { Origin: 'https://untrusted.example.test' },
+  });
+  assert.equal(rejectedOrigin.status, 403);
+  assert.equal(rejectedOrigin.data.error.code, 'ORIGIN_REJECTED');
+  log('Origin 白名单归一化与未授权来源拒绝正常');
 
   // Public content and answer redaction
   const listResponse = await guest.get('/api/v1/questions?pageSize=100');

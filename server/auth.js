@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { promisify } from 'node:util';
-import { config } from './config.js';
+import { config, normalizeOrigin } from './config.js';
 import { isUniqueViolation } from './db.js';
 import { ApiError, errors } from './errors.js';
 import { nowIso } from './utils.js';
@@ -182,18 +182,41 @@ export function checkCsrf(request) {
 
 export function checkOrigin(request) {
   if (!UNSAFE_METHODS.has(request.method)) return;
-  const origin = request.headers.origin;
-  if (!origin) return; // Non-browser clients are still protected by the CSRF double-submit check.
-  const host = request.headers.host;
-  const sameHostOrigin = host ? `${request.protocol || 'http'}://${host}` : null;
+  const rawOrigin = request.headers.origin;
+  if (!rawOrigin) return; // Non-browser clients are still protected by the CSRF double-submit check.
+
+  const origin = normalizeOrigin(rawOrigin);
+  const forwardedHost = config.trustProxy ? request.headers['x-forwarded-host'] : null;
+  const hostHeader = Array.isArray(forwardedHost)
+    ? forwardedHost[0]
+    : forwardedHost || request.headers.host;
+  const host = String(hostHeader || '').split(',')[0].trim();
+  const sameHostOrigin = normalizeOrigin(host ? `${request.protocol || 'http'}://${host}` : '');
+
   const allowed = new Set([
     ...config.allowedOrigins,
     ...(config.environment !== 'production'
-      ? ['http://localhost:5173', 'http://127.0.0.1:5173', `http://localhost:${config.port}`, `http://127.0.0.1:${config.port}`]
+      ? [
+          'http://localhost:5173',
+          'http://127.0.0.1:5173',
+          `http://localhost:${config.port}`,
+          `http://127.0.0.1:${config.port}`,
+        ]
       : []),
     ...(sameHostOrigin ? [sameHostOrigin] : []),
   ]);
-  if (!allowed.has(origin)) {
+
+  if (!origin || !allowed.has(origin)) {
+    request.log?.warn(
+      {
+        origin: rawOrigin,
+        normalizedOrigin: origin || null,
+        host: host || null,
+        protocol: request.protocol || null,
+        allowedOrigins: [...allowed],
+      },
+      'origin rejected',
+    );
     throw new ApiError(403, 'ORIGIN_REJECTED', '请求来源未被允许。');
   }
 }

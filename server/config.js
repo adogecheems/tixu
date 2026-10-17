@@ -31,6 +31,26 @@ function resolvePath(value) {
 const port = Number(process.env.PORT || 3000);
 const publicCacheTtl = Number(process.env.PUBLIC_CACHE_TTL_SECONDS ?? 10);
 
+function parseTrustProxy(raw) {
+  const value = String(raw ?? '').trim().toLowerCase();
+  if (!value || value === 'false' || value === '0') return false;
+  if (value === 'true') return true;
+  const hops = Number.parseInt(value, 10);
+  return Number.isSafeInteger(hops) && hops >= 0 ? hops : false;
+}
+
+export function normalizeOrigin(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  try {
+    const parsed = new URL(raw);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return '';
+    return parsed.origin;
+  } catch {
+    return '';
+  }
+}
+
 export const config = {
   rootDir,
   host: process.env.HOST || '127.0.0.1',
@@ -40,6 +60,7 @@ export const config = {
   databasePath: resolvePath(process.env.DATABASE_PATH || 'data/tixu.db'),
   postgresPoolMax: Math.max(1, Number(process.env.PG_POOL_MAX || 10)),
   publicCacheTtlSeconds: Number.isFinite(publicCacheTtl) ? Math.max(0, publicCacheTtl) : 10,
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
   uploadDir: resolvePath(process.env.UPLOAD_DIR || 'data/uploads'),
   clientDist: path.join(rootDir, 'dist'),
   sessionDays: Math.max(1, Number(process.env.SESSION_DAYS || 30)),
@@ -53,7 +74,7 @@ export const config = {
   maxImportUncompressedBytes: Number(process.env.MAX_IMPORT_UNCOMPRESSED_MB || 25) * 1024 * 1024,
   allowedOrigins: (process.env.ALLOWED_ORIGINS || '')
     .split(',')
-    .map((item) => item.trim())
+    .map(normalizeOrigin)
     .filter(Boolean),
 };
 

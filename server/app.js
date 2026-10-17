@@ -78,6 +78,7 @@ export async function buildApp({ db: providedDb = null, logger = true } = {}) {
     logger: logger === true ? { level: process.env.LOG_LEVEL || 'info' } : logger,
     bodyLimit: 2 * 1024 * 1024,
     requestTimeout: 30000,
+    trustProxy: config.trustProxy,
   });
   app.decorate('db', db);
   app.addHook('onClose', async () => {

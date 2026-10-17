@@ -128,12 +128,24 @@ npm test             # API 集成测试（默认临时 SQLite，不影响 data/�
 | `MAX_UPLOAD_MB` | `5` | 单张图片大小上限 |
 | `MAX_IMPORT_MB` | `15` | 单个导入文件大小上限 |
 | `MAX_IMPORT_UNCOMPRESSED_MB` | `25` | ZIP 解压后总大小上限 |
-| `ALLOWED_ORIGINS` | 空 | 额外允许的 CSRF Origin，逗号分隔 |
+| `ALLOWED_ORIGINS` | 空 | 额外允许的 CSRF Origin，逗号分隔；需写完整 scheme://host[:port]，不要带路径 |
+| `TRUST_PROXY` | `false` | 可信反向代理跳数；HTTPS 终止通常设为 `1` 或 `true` |
 | `LOG_LEVEL` | `info` | Fastify 日志等级 |
 
 开发模式下，Vite 通过代理访问后端，默认允许 `localhost:5173` / `127.0.0.1:5173`。如果修改开发端口，请同步设置 `ALLOWED_ORIGINS`。
 
-### 运行时缓存与密码哈希
+### 请求来源未被允许
+
+页面出现“请求来源未被允许”时，这是应用自身的 CSRF Origin 校验，不是 Nginx / CORS 响应头报错。按以下顺序排查：
+
+1. 浏览器开发者工具 → Network → 失败请求 → Request Headers，确认实际 `Origin`，例如 `https://quiz.example.com`。
+2. 将该值原样写入 `.env` 或启动环境：`ALLOWED_ORIGINS=https://quiz.example.com`；多个来源用逗号分隔。
+3. 只写 `scheme://host[:port]`，不要写路径、结尾 `/` 或通配符；程序会做基本归一化，但精确配置最可靠。
+4. 如果使用 HTTPS 反向代理，设置 `TRUST_PROXY=1`，并让代理传递 `Host`、`X-Forwarded-Host`、`X-Forwarded-Proto`。
+5. 修改环境变量后必须重启 Node 进程。
+6. 应用没有内置 `@fastify/cors` 响应头；如果前端与 API 真正跨域，还需要在代理层配置 CORS（含 credentials），并处理跨站 Cookie 的 `SameSite` 限制。
+
+运行时缓存与密码哈希
 
 - 分类、标签和首页公开统计会在进程内缓存，默认 10 秒；管理员成功写入后会立即失效，避免发布或改名后长时间显示旧数据。
 - 缓存只包含公共元数据；用户个人统计、收藏与错题仍按请求读取最新状态。
