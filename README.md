@@ -1,24 +1,20 @@
-# 题序 TIXU · 在线刷题平台 Demo
+# 题序 TIXU · 在线刷题平台
 
 一个可本地运行的完整全栈刷题平台：游客与账户学习记录、五种题型、即时判题、错题本、收藏夹、作答历史、题目版本管理、批量操作、JSON / ZIP 导入、浅色与深色主题。
-
-界面采用中性色、细边框、适度留白与中等圆角，公共站点与管理后台共享一套设计 Token。
 
 ## 技术栈
 
 | 层次 | 方案 |
-|---|---|
-| 前端 | Vue 3（全部页面组件使用 Options API）、JavaScript、Vue Router、Vite |
-| 后端 | Node.js、Fastify、ES Modules |
-| 数据库 | SQLite（默认，better-sqlite3 / WAL）或 PostgreSQL（设置 `DATABASE_URL` 后启用，pg 连接池） |
-| 内容渲染 | markdown-it + KaTeX（禁用原始 HTML） |
-| 样式 | 原生 CSS + CSS Variables |
-| 图片 | 本地 `data/uploads/` 目录 |
-| 部署 | npm scripts；构建后由单个 Node.js 进程同时提供 API 与静态资源 |
+| --- | --- |
+| 前端 | Vue 3、JavaScript、Vite |
+| 后端 | Node.js、Fastify |
+| 数据库 | SQLite 或 PostgreSQL |
+| 渲染 | markdown-it + KaTeX |
+| 样式 | 原生 CSS |
 
 ## 快速开始
 
-环境要求：**Node.js ≥ 20.19**。默认使用本地 SQLite，不需要安装数据库服务；如需 PostgreSQL，见下方「可选：使用 PostgreSQL」。
+环境要求：**Node.js ≥ 20.19**。默认使用本地 SQLite；如需 PostgreSQL，见下方「可选：使用 PostgreSQL」。
 
 ```bash
 npm install
@@ -26,8 +22,8 @@ npm run setup
 npm run dev
 ```
 
-- 浏览器访问开发地址：**http://127.0.0.1:5173**
-- 后端 API：http://127.0.0.1:3000
+- 浏览器访问开发地址：**<http://127.0.0.1:5173>**
+- 后端 API：<http://127.0.0.1:3000>
 - `npm run setup` 会创建数据库、示例分类、示例题目与管理员账户，并打印管理员凭据。
 
 默认管理员账户：
@@ -37,28 +33,27 @@ npm run dev
 密码：admin12345
 ```
 
-> 该默认密码仅用于本地 Demo。若要使用自己的管理员密码，请在**首次执行 setup 之前**设置环境变量：
->
-> ```bash
-> ADMIN_USERNAME=myadmin ADMIN_PASSWORD='a-long-password' npm run setup
-> ```
->
-> 管理员已存在时，重新运行 setup 不会覆盖密码。
+该默认密码仅用于本地 Demo。若要使用自己的管理员密码，请在首次执行 setup 之前设置环境变量：
 
-## 构建与单进程运行
+```bash
+ADMIN_USERNAME=myadmin ADMIN_PASSWORD='a-long-password' npm run setup
+# 管理员已存在时，重新运行 setup 不会覆盖密码。
+```
+
+### 构建与单进程运行
 
 ```bash
 npm run build
 npm start
 ```
 
-构建完成后，Fastify 同时提供 `/api/v1`、`/uploads/*` 与前端页面，默认访问：
+构建完成后，Fastify 同时提供 `/api/v1`、`/uploads/*` 与前端页面，默认访问
 
-**http://127.0.0.1:3000**
+**<http://127.0.0.1:3000>**
 
 首次启动前仍需执行 `npm run setup`。
 
-## 可选：使用 PostgreSQL
+### 可选：使用 PostgreSQL
 
 不设置 `DATABASE_URL` 时，项目使用本地 `data/tixu.db`。设置后，所有业务数据改由 PostgreSQL 保存；数据库结构由 `npm run setup` 自动创建，无需手动执行 SQL 迁移文件。
 
@@ -86,18 +81,19 @@ DATABASE_URL=postgres://tixu:password@127.0.0.1:5432/tixu
 - SQLite 与 PostgreSQL 之间不会自动迁移数据。切换前请自行导出 / 导入，或重新运行 setup 创建示例数据。
 - setup 会创建缺失的表和示例内容，可重复执行；已有管理员密码不会被覆盖。
 
-要针对 PostgreSQL 运行完整的 API 集成测试：
+### 重置数据
+
+SQLite：
 
 ```bash
-TEST_DATABASE_URL='postgres://tixu:password@127.0.0.1:5432/tixu_test' npm test
+rm -rf data
+npm run setup
 ```
-
-> 测试会清空并重建该连接对应数据库的 `public` schema。为防止误删数据，数据库名必须为 `test`、以 `test_` / `test-` 开头，或以 `_test` / `-test` 结尾；请始终使用专用测试数据库，不要指向生产库。
 
 ## 常用命令
 
 ```bash
-npm run setup        # 初始化 / 补全示例数据和管理员（幂等）
+npm run setup        # 初始化 / 补全示例数据和管理员
 npm run dev          # 同时启动 Fastify（3000）与 Vite（5173）
 npm run dev:server   # 只启动后端，watch 模式
 npm run dev:web      # 只启动 Vite
@@ -106,14 +102,12 @@ npm start            # 生产模式单进程启动
 npm test             # API 集成测试（默认临时 SQLite，不影响 data/）
 ```
 
-不依赖自动化浏览器环境即可运行 `npm test`。测试覆盖游客作答、账户隔离、游客合并、五种题型、错题状态、历史版本、管理员权限、批量操作、JSON / ZIP 导入、图片上传、CSRF 等关键流程。
-
 ## 配置
 
 项目会自动读取根目录 `.env`（如果存在），也可以直接通过 shell 环境变量覆盖。参考 `.env.example`。
 
 | 变量 | 默认值 | 说明 |
-|---|---|---|
+| --- | --- | --- |
 | `HOST` | `127.0.0.1` | 监听地址；局域网访问可设为 `0.0.0.0` |
 | `PORT` | `3000` | 后端端口 |
 | `DATABASE_URL` | 空 | PostgreSQL 连接 URL；设置后启用 PostgreSQL，并忽略 `DATABASE_PATH` |
@@ -133,35 +127,6 @@ npm test             # API 集成测试（默认临时 SQLite，不影响 data/�
 | `LOG_LEVEL` | `info` | Fastify 日志等级 |
 
 开发模式下，Vite 通过代理访问后端，默认允许 `localhost:5173` / `127.0.0.1:5173`。如果修改开发端口，请同步设置 `ALLOWED_ORIGINS`。
-
-### 请求来源未被允许
-
-页面出现“请求来源未被允许”时，这是应用自身的 CSRF Origin 校验，不是 Nginx / CORS 响应头报错。按以下顺序排查：
-
-1. 浏览器开发者工具 → Network → 失败请求 → Request Headers，确认实际 `Origin`，例如 `https://quiz.example.com`。
-2. 将该值原样写入 `.env` 或启动环境：`ALLOWED_ORIGINS=https://quiz.example.com`；多个来源用逗号分隔。
-3. 只写 `scheme://host[:port]`，不要写路径、结尾 `/` 或通配符；程序会做基本归一化，但精确配置最可靠。
-4. 如果使用 HTTPS 反向代理，设置 `TRUST_PROXY=1`，并让代理传递 `Host`、`X-Forwarded-Host`、`X-Forwarded-Proto`。
-5. 修改环境变量后必须重启 Node 进程。
-6. 应用没有内置 `@fastify/cors` 响应头；如果前端与 API 真正跨域，还需要在代理层配置 CORS（含 credentials），并处理跨站 Cookie 的 `SameSite` 限制。
-
-运行时缓存与密码哈希
-
-- 分类、标签和首页公开统计会在进程内缓存，默认 10 秒；管理员成功写入后会立即失效，避免发布或改名后长时间显示旧数据。
-- 缓存只包含公共元数据；用户个人统计、收藏与错题仍按请求读取最新状态。
-- 设置 `PUBLIC_CACHE_TTL_SECONDS=0` 可以关闭缓存。
-- 密码哈希使用异步 `crypto.scrypt`；登录 / 注册不会再用同步计算阻塞 Node.js 主事件循环。
-
-### 重置 Demo 数据
-
-SQLite：
-
-```bash
-rm -rf data
-npm run setup
-```
-
-PostgreSQL：删除或清空专用数据库 / schema 后重新执行 `npm run setup`。这会重新创建表结构、示例内容和默认管理员。操作前请确认其中没有你需要的学习记录；图片与导入资源仍位于 `data/uploads/`，不受数据库清空影响。
 
 ## 功能一览
 
@@ -249,7 +214,6 @@ assets/
 
 - 仅允许 `questions.json` 与 `assets/` 下的 PNG、JPEG、GIF、WebP 图片。
 - 在 Markdown 中使用 `![说明](assets/diagram-1.png)`；导入后会重写为本地 `/uploads/...` 地址。
-- 禁止绝对路径、`..` 路径穿越、未知文件类型、加密 ZIP、超限文件或超限解压总量。
 - 任意题目校验失败则整批拒绝。
 
 ## 项目结构
@@ -279,24 +243,10 @@ assets/
 └── package.json
 ```
 
-## API 摘要
-
-统一前缀：`/api/v1`。错误统一为：
-
-```json
-{
-  "error": {
-    "code": "VALIDATION_FAILED",
-    "message": "题目内容尚未通过发布校验。",
-    "details": []
-  }
-}
-```
-
-主要端点：
+## 主要端点
 
 | 方法 | 路径 | 说明 |
-|---|---|---|
+| --- | --- | --- |
 | GET | `/auth/me` | 当前会话与 CSRF Cookie |
 | POST | `/auth/register` | 注册并自动登录 |
 | POST | `/auth/login` / `/auth/logout` | 登录 / 退出 |
@@ -316,41 +266,3 @@ assets/
 | GET | `/health` `/healthz` | 健康检查 |
 
 标准答案与解析不会出现在公开列表 / 详情接口中，只在有效提交响应、管理员接口和用户自己的历史详情中返回。
-
-## 数据与一致性说明
-
-- 已发布题目内容存放在不可变的 `question_versions`，标准答案和判题规则存放在 `question_answers`。
-- 每次提交保存独立的 `answer_records`，记录当时的 `version_id`；发布修订不会改变既有记录。
-- `user_question_states` 保存当前错题状态、累计错误次数、收藏时间与最近作答信息。
-- 游客的本地记录只存在浏览器 IndexedDB；登录合并时由服务端重新验证答案，客户端上报的 `isCorrect` 不被信任。
-- 无法与有效版本对应的合并记录会保留为「未验证」，不计入已验证判题统计。
-- 服务端使用事务处理发布、批量操作、导入确认和游客合并；提交使用 `(user_id, client_event_id)` 唯一约束保证幂等。
-
-## 安全边界
-
-Demo 已包含基础保护：
-
-- scrypt 密码哈希、随机会话令牌的 SHA-256 存储、HttpOnly / SameSite=Lax Cookie。
-- CSRF 双提交 Cookie + 自定义请求头 + 同源 Origin 校验。
-- 后端管理员权限校验，普通用户无法访问 `/admin/*`。
-- 参数化 SQL、内容安全渲染（markdown-it 禁用 HTML，KaTeX `trust:false`）。
-- 图片 magic bytes 校验、随机文件名、类型与大小限制。
-- ZIP 路径、文件类型、单文件 / 解压总量限制。
-- 登录、提交与部分写入接口限速。
-- CSP、`X-Content-Type-Options`、`Referrer-Policy` 等响应头。
-
-生产部署仍建议自行配置 HTTPS、反向代理、备份与更严格的上游限速；这些不在 Demo 的启动前置条件里。
-
-## 不在第一版范围内
-
-考试 / 交卷 / 计时、练习会话、AI 判题或出题、排行榜、社交评论、邮箱 / 短信验证、OAuth、复杂权限、微服务 / Redis / 消息队列、Docker / Nginx / systemd 强制部署、云对象存储。
-
-这些都是未来扩展，不是运行本 Demo 的前置条件。
-
-## 已知边界
-
-- 默认 SQLite 使用单连接串行事务，PostgreSQL 使用连接池。并发能力以实际测试为准。
-- 管理员密码没有重置页面；本地 Demo 可通过重建数据库或直接修改数据库完成重置。
-- 主管理员通过 `npm run setup` 初始化，不提供线上自助提升管理员角色。
-- 图片仅支持 PNG / JPEG / GIF / WebP；SVG 出于脚本风险不支持上传。
-- Git 忽略 `data/`（学习数据与上传）和 `dist/`（构建产物）；首次运行请执行 setup，生产启动前请执行 build。

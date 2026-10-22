@@ -146,6 +146,7 @@ async function setupServer() {
     DATABASE_URL: TEST_DATABASE_URL || '',
     DATABASE_PATH: dbPath,
     UPLOAD_DIR: uploadDir,
+    
     ADMIN_USERNAME,
     ADMIN_PASSWORD,
     PORT: '0',
